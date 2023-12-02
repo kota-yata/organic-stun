@@ -1,5 +1,5 @@
 use crate::stun::message::{StunMessage, StunAttribute};
-use std::net::{SocketAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{SocketAddr, Ipv6Addr};
 
 const STUN_MAGIC_COOKIE: u32 = 0x2112A442;
 

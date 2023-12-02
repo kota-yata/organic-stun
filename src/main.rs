@@ -1,6 +1,6 @@
 mod stun;
 
-use std::net::{UdpSocket, SocketAddr};
+use std::net::UdpSocket;
 use stun::handle_stun_request;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

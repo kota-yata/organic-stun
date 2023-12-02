@@ -31,6 +31,12 @@ impl StunMessage {
       return Err("Data too short to be a valid STUN message");
     }
 
+    let magic_cookie = u32::from_be_bytes([data[4], data[5], data[6], data[7]]);
+    const STUN_MAGIC_COOKIE: u32 = 0x2112A442;
+    if magic_cookie != STUN_MAGIC_COOKIE {
+        return Err("Invalid magic cookie in STUN message");
+    }
+
     let message_type = ((data[0] as u16) << 8) | data[1] as u16;
     let length = ((data[2] as u16) << 8) | data[3] as u16;
     let mut transaction_id = [0u8; 12];
