@@ -4,10 +4,10 @@ use std::net::{UdpSocket, SocketAddr};
 use stun::handle_stun_request;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::io;
+use std::io::Result;
 use signal_hook::{consts::SIGINT, iterator::Signals};
 
-fn main() -> io::Result<()> {
+fn main() -> Result<()> {
     // Setup for graceful shutdown
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
@@ -15,8 +15,10 @@ fn main() -> io::Result<()> {
     // Register signal handler for SIGINT
     let mut signals = Signals::new(&[SIGINT]).expect("Error setting signal handler");
     std::thread::spawn(move || {
-        for _ in signals.forever() {
-            r.store(false, Ordering::SeqCst);
+        for sig in signals.forever() {
+            if sig == SIGINT {
+                r.store(false, Ordering::SeqCst);
+            }
         }
     });
 
@@ -32,6 +34,8 @@ fn main() -> io::Result<()> {
         }
     };
 
+    socket.set_nonblocking(true).expect("Failed to set socket to non-blocking");
+
     while running.load(Ordering::SeqCst) {
         let mut buffer = [0; 1024]; // Buffer for incoming data
 
@@ -44,6 +48,7 @@ fn main() -> io::Result<()> {
                 continue;
             }
         };
+        println!("Received {} bytes from {}", num_bytes, src_addr);
 
         // Parse the incoming data as a STUN message
         let request = match stun::StunMessage::decode(&buffer[..num_bytes]) {
