@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 signal-hook = "0.3.17"
+thiserror = "1.0.50"

@@ -1,3 +1,5 @@
+use crate::stun::error::StunMessageError;
+
 pub struct StunMessage {
   pub message_type: u16,
   pub length: u16,
@@ -26,15 +28,15 @@ impl StunMessage {
       |                                                               |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    */
-  pub fn decode(data: &[u8]) -> Result<StunMessage, &'static str> {
+  pub fn decode(data: &[u8]) -> Result<StunMessage, StunMessageError> {
     if data.len() < 20 {
-      return Err("Data too short to be a valid STUN message");
+      return Err(StunMessageError::DataTooShort);
     }
 
     let magic_cookie = u32::from_be_bytes([data[4], data[5], data[6], data[7]]);
     const STUN_MAGIC_COOKIE: u32 = 0x2112A442;
     if magic_cookie != STUN_MAGIC_COOKIE {
-        return Err("Invalid magic cookie in STUN message");
+        return Err(StunMessageError::InvalidMagicCookie);
     }
 
     let message_type = ((data[0] as u16) << 8) | data[1] as u16;
@@ -46,9 +48,9 @@ impl StunMessage {
     let mut offset = 20;
     while offset < data.len() {
       if offset + 4 > data.len() {
-        return Err("Invalid attribute length");
+        return Err(StunMessageError::InvalidAttributeLength);
       }
-      let attr = StunAttribute::decode(&data[offset..])?;
+      let attr = StunAttribute::decode(&data[offset..]).map_err(StunMessageError::from)?;
       offset += 4 + attr.length as usize;
       attributes.push(attr);
     }
@@ -76,16 +78,16 @@ impl StunMessage {
 }
 
 impl StunAttribute {
-  pub fn decode(data: &[u8]) -> Result<StunAttribute, &'static str> {
+  pub fn decode(data: &[u8]) -> Result<StunAttribute, StunMessageError> {
     if data.len() < 4 {
-      return Err("Attribute data too short");
+      return Err(StunMessageError::AttributeDataTooShort);
     }
 
     let attr_type = ((data[0] as u16) << 8) | data[1] as u16;
     let length = ((data[2] as u16) << 8) | data[3] as u16;
 
     if data.len() < (4 + length as usize) {
-      return Err("Attribute length does not match data length");
+      return Err(StunMessageError::AttributeLengthMismatch);
     }
 
     let value = data[4..(4 + length as usize)].to_vec();

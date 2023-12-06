@@ -1,17 +1,18 @@
+use crate::stun::error::StunMessageError;
 use crate::stun::message::{StunMessage, StunAttribute};
 use std::net::{SocketAddr, Ipv6Addr};
 
 const STUN_MAGIC_COOKIE: u32 = 0x2112A442;
 
-pub fn handle_stun_request(request: &StunMessage, client_addr: &SocketAddr) -> Result<StunMessage, &'static str> {
+pub fn handle_stun_request(request: &StunMessage, client_addr: &SocketAddr) -> Result<StunMessage, StunMessageError> {
   match request.message_type {
     0x0001 => handle_binding_request(request, client_addr),
-    _ => Err("Unsupported STUN request type"),
+    _ => Err(StunMessageError::UnsupportedRequestType),
   }
 }
 
-fn handle_binding_request(request: &StunMessage, client_addr: &SocketAddr) -> Result<StunMessage, &'static str> {
-  let xor_mapped_address = create_xor_mapped_address(client_addr, &request.transaction_id)?;
+fn handle_binding_request(request: &StunMessage, client_addr: &SocketAddr) -> Result<StunMessage, StunMessageError> {
+  let xor_mapped_address = create_xor_mapped_address(client_addr, &request.transaction_id).map_err(StunMessageError::from)?;
   
   // Construct the Binding Response
   let response = StunMessage {
@@ -24,7 +25,7 @@ fn handle_binding_request(request: &StunMessage, client_addr: &SocketAddr) -> Re
   Ok(response)
 }
 
-fn create_xor_mapped_address(client_addr: &SocketAddr, transaction_id: &[u8; 12]) -> Result<StunAttribute, &'static str> {
+fn create_xor_mapped_address(client_addr: &SocketAddr, transaction_id: &[u8; 12]) -> Result<StunAttribute, StunMessageError> {
   match client_addr {
     SocketAddr::V4(addr) => {
       let ip = u32::from_ne_bytes(addr.ip().octets()) ^ STUN_MAGIC_COOKIE;
